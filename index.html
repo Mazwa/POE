@@ -43,41 +43,43 @@
           <button id="item-search-btn" class="secondary-btn" type="button">View</button>
         </div>
       </div>
-
-      <div class="results-content">
-        <section class="table-section">
-          <div class="table-wrapper">
-            <table id="results-table">
-              <thead>
-                <tr>
-                  <th>Item</th>
-                  <th>AvgDailyROI</th>
-                  <th>Necropolis</th>
-                  <th>Settlers</th>
-                  <th>Phrecia</th>
-                  <th>Avg Buy</th>
-                  <th>Avg Sell</th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
-          </div>
-          <p class="table-footnote">Click a row or search to focus an item. The table will collapse to that pick so the price graph below has room.</p>
-        </section>
-
-        <section class="chart-section" aria-live="polite">
-          <div class="chart-panel">
-            <h3 id="chart-title">Select an item to view price history</h3>
-            <p id="chart-subtitle">Choose an item from the table or search to plot its price across leagues.</p>
-            <div class="chart-container" data-empty="true">
-              <canvas id="price-chart" aria-describedby="chart-subtitle"></canvas>
-              <div id="chart-empty" class="chart-empty">No item selected</div>
-            </div>
-          </div>
-        </section>
+      <div class="table-wrapper">
+        <table id="results-table">
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>AvgDailyROI</th>
+              <th>Necropolis</th>
+              <th>Settlers</th>
+              <th>Phrecia</th>
+              <th>Avg Buy</th>
+              <th>Avg Sell</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
       </div>
     </section>
   </main>
+
+  <div id="modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" hidden tabindex="-1">
+    <div class="modal-content">
+      <button class="modal-close" type="button" aria-label="Close">&times;</button>
+      <h2 id="modal-title"></h2>
+      <p class="modal-subtitle">Chaos Orb price across leagues</p>
+      <canvas id="price-chart" height="60"></canvas>
+
+      <section class="modal-section">
+        <h3>Hold Period Returns</h3>
+        <div class="table-wrapper">
+          <table id="hold-table">
+            <thead></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </div>
 
   <script type="module" src="script.js"></script>
 </body>

@@ -241,6 +241,10 @@ td {
   font-variant-numeric: tabular-nums;
 }
 
+#price-chart {
+  height: 60px;
+}
+
 .table-footnote {
   color: var(--text-secondary);
   font-size: 0.85rem;
@@ -269,8 +273,10 @@ td {
   padding: 1.25rem 1.5rem 1.4rem;
   box-shadow: inset 0 0 0 1px rgba(15, 118, 110, 0.12);
   display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
+}
+
+.modal[hidden] {
+  display: none;
 }
 
 .chart-panel h3 {
