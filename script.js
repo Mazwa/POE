@@ -243,13 +243,17 @@ function openModal(itemName) {
   renderPriceChart(itemName, itemData);
   renderHoldTable(itemData);
 
+  modal.classList.add('is-visible');
   modal.hidden = false;
+  modal.removeAttribute('hidden');
   modal.focus({ preventScroll: true });
   document.body.style.overflow = 'hidden';
 }
 
 function closeModal() {
+  modal.classList.remove('is-visible');
   modal.hidden = true;
+  modal.setAttribute('hidden', '');
   document.body.style.overflow = '';
   if (state.chart) {
     state.chart.destroy();
