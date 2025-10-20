@@ -5,6 +5,7 @@ const LEAGUE_FILES = [
 ];
 
 const HOLD_DURATIONS = [1, 2, 4, 8, 16, 32, 64];
+const LEAGUE_NAMES = LEAGUE_FILES.map(({ label }) => label);
 const THREE_MONTHS_IN_DAYS = 92;
 
 const state = {
@@ -187,48 +188,32 @@ function renderResultsTable(results) {
   if (!results.length) {
     const row = document.createElement('tr');
     const cell = document.createElement('td');
-    cell.colSpan = 6;
+    cell.colSpan = 7;
     cell.textContent = 'No matching historical opportunities found for this window.';
     row.appendChild(cell);
     resultsTableBody.appendChild(row);
     return;
   }
 
-  const holdDuration = state.currentWindow.sellDay - state.currentWindow.buyDay;
-
   for (const result of results.slice(0, 25)) {
     const row = document.createElement('tr');
     row.dataset.itemName = result.itemName;
-    const leagueNames = [];
-    const buyValues = [];
-    const sellValues = [];
-    const returnValues = [];
-
-    for (const { label } of LEAGUE_FILES) {
-      const leagueMetrics = result.leagueBreakdown[label];
-      leagueNames.push(`<div class="stacked-cell__label">${label}</div>`);
-      buyValues.push(`<div class="stacked-cell__value">${formatChaos(leagueMetrics?.buyPrice)}</div>`);
-      sellValues.push(`<div class="stacked-cell__value">${formatChaos(leagueMetrics?.sellPrice)}</div>`);
-      returnValues.push(`<div class="stacked-cell__value">${formatPercent(leagueMetrics?.compoundReturn)}</div>`);
-    }
 
     const avgBuyText = formatChaos(result.avgBuy);
     const avgSellText = formatChaos(result.avgSell);
-    const avgBuyDisplay = avgBuyText === '–' ? avgBuyText : `${avgBuyText}c`;
-    const avgSellDisplay = avgSellText === '–' ? avgSellText : `${avgSellText}c`;
+    const avgDailyRoi = formatPercent(result.avgDailyReturn);
+    const leagueRois = LEAGUE_NAMES.map((leagueName) => {
+      const leagueMetrics = result.leagueBreakdown?.[leagueName];
+      return formatPercent(leagueMetrics ? leagueMetrics.dailyReturn : NaN);
+    });
 
-    row.innerHTML = `
-      <td class="item-cell">
-        <div class="item-name">${result.itemName}</div>
-        <div class="item-meta">Hold ${state.currentWindow.buyDay} → ${state.currentWindow.sellDay} (${holdDuration} day${holdDuration === 1 ? '' : 's'})</div>
-        <div class="item-averages">Avg Buy: ${avgBuyDisplay} · Avg Sell: ${avgSellDisplay}</div>
-      </td>
-      <td class="roi-cell">${formatPercent(result.avgDailyReturn)}</td>
-      <td class="stacked-cell">${leagueNames.join('')}</td>
-      <td class="stacked-cell">${buyValues.join('')}</td>
-      <td class="stacked-cell">${sellValues.join('')}</td>
-      <td class="stacked-cell">${returnValues.join('')}</td>
-    `;
+    row.innerHTML = [
+      `<td class="item-name">${result.itemName}</td>`,
+      `<td class="roi-cell">${avgDailyRoi}</td>`,
+      ...leagueRois.map((value) => `<td>${value}</td>`),
+      `<td>${avgBuyText}</td>`,
+      `<td>${avgSellText}</td>`
+    ].join('');
     row.addEventListener('click', () => openModal(result.itemName));
     resultsTableBody.appendChild(row);
   }
@@ -300,6 +285,14 @@ function renderPriceChart(itemName, itemData) {
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      layout: {
+        padding: {
+          top: 6,
+          bottom: 6,
+          left: 8,
+          right: 12
+        }
+      },
       scales: {
         x: {
           type: 'linear',
@@ -328,7 +321,14 @@ function renderPriceChart(itemName, itemData) {
           }
         },
         legend: {
-          position: 'bottom'
+          position: 'bottom',
+          labels: {
+            boxWidth: 12,
+            padding: 10,
+            font: {
+              size: 11
+            }
+          }
         }
       }
     }

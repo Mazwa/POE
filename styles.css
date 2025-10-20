@@ -194,11 +194,6 @@ thead th {
   text-align: right;
 }
 
-.results-card th:nth-child(3),
-.results-card td:nth-child(3) {
-  text-align: left;
-}
-
 tbody tr {
   background: rgba(30, 41, 59, 0.75);
   border-bottom: 1px solid rgba(148, 163, 184, 0.14);
@@ -214,46 +209,33 @@ td {
   font-size: 0.95rem;
 }
 
-.item-cell {
-  min-width: 220px;
-}
-
 .item-name {
+  min-width: 220px;
   font-weight: 600;
-  margin-bottom: 0.35rem;
-}
-
-.item-meta,
-.item-averages {
-  color: var(--text-secondary);
-  font-size: 0.85rem;
-}
-
-.item-meta {
-  margin-bottom: 0.25rem;
 }
 
 .roi-cell {
   font-weight: 600;
 }
 
-.stacked-cell {
-  display: grid;
-  gap: 0.4rem;
-  align-items: start;
-}
-
-.stacked-cell__label {
-  font-weight: 600;
-  color: var(--text-secondary);
-}
-
-.stacked-cell__value {
+.results-card td:nth-child(n + 2) {
   font-variant-numeric: tabular-nums;
 }
 
+.chart-container {
+  height: 200px;
+  position: relative;
+}
+
 #price-chart {
-  height: 120px;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+@media (max-width: 720px) {
+  .chart-container {
+    height: 160px;
+  }
 }
 
 .table-footnote {
@@ -287,6 +269,8 @@ td {
 
 .modal.is-visible {
   display: flex;
+}
+
 .modal[hidden] {
   display: none;
 }
