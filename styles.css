@@ -194,6 +194,11 @@ thead th {
   text-align: right;
 }
 
+.results-card th:nth-child(3),
+.results-card td:nth-child(3) {
+  text-align: left;
+}
+
 tbody tr {
   background: rgba(30, 41, 59, 0.75);
   border-bottom: 1px solid rgba(148, 163, 184, 0.14);
@@ -207,6 +212,44 @@ tbody tr:hover {
 td {
   padding: 0.8rem 0.9rem;
   font-size: 0.95rem;
+}
+
+.item-cell {
+  min-width: 220px;
+}
+
+.item-name {
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+}
+
+.item-meta,
+.item-averages {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+.item-meta {
+  margin-bottom: 0.25rem;
+}
+
+.roi-cell {
+  font-weight: 600;
+}
+
+.stacked-cell {
+  display: grid;
+  gap: 0.4rem;
+  align-items: start;
+}
+
+.stacked-cell__label {
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.stacked-cell__value {
+  font-variant-numeric: tabular-nums;
 }
 
 #price-chart {
