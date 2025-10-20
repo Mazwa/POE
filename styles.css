@@ -189,6 +189,11 @@ thead th {
   color: var(--text-secondary);
 }
 
+.results-card th:not(:first-child),
+.results-card td:not(:first-child) {
+  text-align: right;
+}
+
 tbody tr {
   background: rgba(30, 41, 59, 0.75);
   border-bottom: 1px solid rgba(148, 163, 184, 0.14);
@@ -199,41 +204,13 @@ tbody tr:hover {
   background: rgba(51, 65, 85, 0.8);
 }
 
-.league-details {
-  background: rgba(15, 23, 42, 0.65);
-}
-
-.league-details td {
-  padding: 0.4rem 0.9rem 1rem;
-}
-
-.league-metrics {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 0.35rem;
-}
-
-.league-metrics thead tr {
-  background: rgba(15, 23, 42, 0.9);
-}
-
-.league-metrics th,
-.league-metrics td {
-  padding: 0.4rem 0.6rem;
-  font-size: 0.85rem;
-}
-
-.league-metrics tbody tr:nth-child(odd) {
-  background: rgba(30, 41, 59, 0.55);
-}
-
-.league-metrics tbody tr:nth-child(even) {
-  background: rgba(30, 41, 59, 0.35);
-}
-
 td {
   padding: 0.8rem 0.9rem;
   font-size: 0.95rem;
+}
+
+#price-chart {
+  height: 120px;
 }
 
 .table-footnote {
