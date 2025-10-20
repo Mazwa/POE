@@ -34,7 +34,6 @@ const screenerForm = document.getElementById('screener-form');
 const buyDayInput = document.getElementById('buy-day');
 const sellDayInput = document.getElementById('sell-day');
 const searchInput = document.getElementById('item-search');
-const searchButton = document.getElementById('item-search-btn');
 const minPriceInput = document.getElementById('min-buy-price');
 const maxPriceInput = document.getElementById('max-buy-price');
 const datalist = document.getElementById('item-options');
@@ -437,11 +436,12 @@ function handleWindowInputChange() {
   applyWindowChange();
 }
 
-function handleSearch() {
+function applySearchValue(rawValue, { shouldAlert = false } = {}) {
   if (!state.data) {
-    return;
+    return false;
   }
-  const value = searchInput.value.trim();
+
+  const value = rawValue.trim();
   if (!value) {
     state.tableFilter = null;
     renderResultsTable(state.investmentResults);
@@ -449,31 +449,30 @@ function handleSearch() {
     if (state.selectedItem) {
       renderSelectedItemChart();
     }
-    return;
+    return true;
   }
 
   if (!state.data.items[value]) {
-    alert('No historical data found for that item name.');
-    return;
+    if (shouldAlert) {
+      alert('No historical data found for that item name.');
+    }
+    return false;
   }
 
-  state.tableFilter = value;
-  focusItem(value, { updateSearch: true });
+  if (state.selectedItem === value && state.tableFilter === value) {
+    return true;
+  }
+
+  focusItem(value, { updateSearch: false });
+  return true;
+}
+
+function handleSearch() {
+  applySearchValue(searchInput.value, { shouldAlert: true });
 }
 
 function handleSearchInputChange() {
-  if (!state.data) {
-    return;
-  }
-  if (searchInput.value.trim()) {
-    return;
-  }
-  state.tableFilter = null;
-  renderResultsTable(state.investmentResults);
-  highlightSelectedRow();
-  if (state.selectedItem) {
-    renderSelectedItemChart();
-  }
+  applySearchValue(searchInput.value);
 }
 
 function clampPriceFilterValues(minValue, maxValue) {
@@ -642,7 +641,6 @@ if (sellDayInput) {
   sellDayInput.addEventListener('input', handleWindowInputChange);
   sellDayInput.addEventListener('change', handleWindowInputChange);
 }
-searchButton.addEventListener('click', handleSearch);
 searchInput.addEventListener('input', handleSearchInputChange);
 searchInput.addEventListener('keydown', (event) => {
   if (event.key === 'Enter') {
