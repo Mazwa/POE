@@ -23,7 +23,8 @@ const state = {
   chart: null,
   selectedItem: null,
   tableFilter: null,
-  selectedLeagues: new Set(DEFAULT_SELECTED_LEAGUES)
+  selectedLeagues: new Set(DEFAULT_SELECTED_LEAGUES),
+  priceFilter: { min: 0, max: 99999 }
 };
 
 const resultsTableBody = document.querySelector('#results-table tbody');
@@ -31,6 +32,8 @@ const resultsTableHeadRow = document.getElementById('results-header-row');
 const priceCanvas = document.getElementById('price-chart');
 const searchInput = document.getElementById('item-search');
 const searchButton = document.getElementById('item-search-btn');
+const minPriceInput = document.getElementById('min-buy-price');
+const maxPriceInput = document.getElementById('max-buy-price');
 const datalist = document.getElementById('item-options');
 const chartTitle = document.getElementById('chart-title');
 const chartSubtitle = document.getElementById('chart-subtitle');
@@ -222,14 +225,23 @@ function formatPercent(value) {
 function renderTableHeader() {
   if (!resultsTableHeadRow) return;
   const selectedLeagueNames = getSelectedLeagueNames();
-  const headers = [
-    '<th>Item</th>',
-    '<th>AvgDailyROI</th>',
-    ...selectedLeagueNames.map((league) => `<th>${league}</th>`),
-    '<th>Avg Buy</th>',
-    '<th>Avg Sell</th>'
-  ];
-  resultsTableHeadRow.innerHTML = headers.join('');
+  const headerCells = [];
+
+  const createHeaderCell = (text) => {
+    const th = document.createElement('th');
+    th.textContent = text;
+    return th;
+  };
+
+  headerCells.push(createHeaderCell('Item'));
+  headerCells.push(createHeaderCell('AvgDailyROI'));
+  for (const league of selectedLeagueNames) {
+    headerCells.push(createHeaderCell(league));
+  }
+  headerCells.push(createHeaderCell('Avg Buy'));
+  headerCells.push(createHeaderCell('Avg Sell'));
+
+  resultsTableHeadRow.replaceChildren(...headerCells);
 }
 
 function renderResultsTable(results) {
@@ -237,17 +249,34 @@ function renderResultsTable(results) {
   const selectedLeagueNames = getSelectedLeagueNames();
   renderTableHeader();
 
-  const rowsToRender = state.tableFilter
-    ? results.filter((result) => result.itemName === state.tableFilter)
-    : results.slice(0, 25);
+  const filteredByPrice = results.filter((result) => {
+    const { min, max } = state.priceFilter;
+    const avgBuy = result.avgBuy;
+    if (!Number.isFinite(avgBuy)) {
+      return false;
+    }
+    return avgBuy >= min && avgBuy <= max;
+  });
+
+  const isItemFilterActive = Boolean(state.tableFilter);
+  const baseResults = isItemFilterActive ? results : filteredByPrice;
+  const rowsToRender = isItemFilterActive
+    ? baseResults.filter((result) => result.itemName === state.tableFilter)
+    : baseResults.slice(0, 25);
 
   if (!rowsToRender.length) {
     const row = document.createElement('tr');
     const cell = document.createElement('td');
     cell.colSpan = selectedLeagueNames.length + 4;
-    cell.textContent = selectedLeagueNames.length
-      ? 'No matching historical opportunities found for this window.'
-      : 'Select at least one league to display results.';
+    if (!selectedLeagueNames.length) {
+      cell.textContent = 'Select at least one league to display results.';
+    } else if (!results.length) {
+      cell.textContent = 'No matching historical opportunities found for this window.';
+    } else if (!filteredByPrice.length) {
+      cell.textContent = 'No items fall within the selected buy price range.';
+    } else {
+      cell.textContent = 'No matching historical opportunities found for this item.';
+    }
     row.appendChild(cell);
     resultsTableBody.appendChild(row);
     return;
@@ -422,6 +451,29 @@ function handleSearchInputChange() {
   }
 }
 
+function clampPriceFilterValues(minValue, maxValue) {
+  const boundedMin = Math.max(0, Math.min(99999, minValue));
+  const boundedMax = Math.max(boundedMin, Math.min(99999, maxValue));
+  return { min: boundedMin, max: boundedMax };
+}
+
+function handlePriceFilterChange() {
+  const parsedMin = Number.parseFloat(minPriceInput.value);
+  const parsedMax = Number.parseFloat(maxPriceInput.value);
+  const sanitizedMin = Number.isFinite(parsedMin) ? parsedMin : state.priceFilter.min;
+  const sanitizedMax = Number.isFinite(parsedMax) ? parsedMax : state.priceFilter.max;
+  const { min, max } = clampPriceFilterValues(sanitizedMin, sanitizedMax);
+
+  state.priceFilter = { min, max };
+  minPriceInput.value = min.toString();
+  maxPriceInput.value = max.toString();
+
+  if (state.data) {
+    renderResultsTable(state.investmentResults);
+    highlightSelectedRow();
+  }
+}
+
 async function init() {
   renderLeagueFilters();
   try {
@@ -565,5 +617,7 @@ searchInput.addEventListener('keydown', (event) => {
     handleSearch();
   }
 });
+minPriceInput.addEventListener('change', handlePriceFilterChange);
+maxPriceInput.addEventListener('change', handlePriceFilterChange);
 
 document.addEventListener('DOMContentLoaded', init);

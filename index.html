@@ -40,11 +40,22 @@
     <section class="results-card">
       <div class="results-header">
         <h2>Top Historical Returns</h2>
-        <div class="search-wrapper">
-          <label for="item-search" class="visually-hidden">Search items</label>
-          <input id="item-search" class="search-input" type="search" placeholder="Search for an item or currency" list="item-options" />
-          <datalist id="item-options"></datalist>
-          <button id="item-search-btn" class="secondary-btn" type="button">View</button>
+        <div class="results-controls">
+          <div class="price-filter">
+            <label for="min-buy-price">Buy price range</label>
+            <div class="price-filter-inputs">
+              <input type="number" id="min-buy-price" min="0" max="99999" value="0" />
+              <span class="range-separator">to</span>
+              <input type="number" id="max-buy-price" min="0" max="99999" value="99999" />
+              <span class="range-suffix">c</span>
+            </div>
+          </div>
+          <div class="search-wrapper">
+            <label for="item-search" class="visually-hidden">Search items</label>
+            <input id="item-search" class="search-input" type="search" placeholder="Search for an item or currency" list="item-options" />
+            <datalist id="item-options"></datalist>
+            <button id="item-search-btn" class="secondary-btn" type="button">View</button>
+          </div>
         </div>
       </div>
       <div class="table-wrapper">
