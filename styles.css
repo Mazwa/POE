@@ -257,12 +257,16 @@ td {
   position: fixed;
   inset: 0;
   background: rgba(2, 6, 23, 0.78);
-  display: flex;
+  display: none;
   align-items: center;
   justify-content: center;
   padding: 2rem 1rem;
   backdrop-filter: blur(8px);
   z-index: 10;
+}
+
+.modal.is-visible {
+  display: flex;
 }
 
 .modal-content {
