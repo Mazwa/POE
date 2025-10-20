@@ -1,12 +1,20 @@
 const LEAGUE_FILES = [
   { label: 'Necropolis', path: 'Necropolis.currency.csv' },
   { label: 'Settlers', path: 'Settlers.currency.csv' },
-  { label: 'Phrecia', path: 'Phrecia.currency.csv' }
+  { label: 'Phrecia', path: 'Phrecia.currency.csv' },
+  { label: 'Mercenaries', path: 'Mercenaries.currency.csv' }
 ];
 
 const HOLD_DURATIONS = [1, 2, 4, 8, 16, 32, 64];
-const LEAGUE_NAMES = LEAGUE_FILES.map(({ label }) => label);
 const THREE_MONTHS_IN_DAYS = 92;
+
+const DEFAULT_SELECTED_LEAGUES = new Set(['Settlers', 'Phrecia']);
+const LEAGUE_COLORS = {
+  Necropolis: '#38bdf8',
+  Settlers: '#f97316',
+  Phrecia: '#a855f7',
+  Mercenaries: '#facc15'
+};
 
 const state = {
   data: null,
@@ -14,10 +22,12 @@ const state = {
   currentWindow: { buyDay: 3, sellDay: 6 },
   chart: null,
   selectedItem: null,
-  tableFilter: null
+  tableFilter: null,
+  selectedLeagues: new Set(DEFAULT_SELECTED_LEAGUES)
 };
 
 const resultsTableBody = document.querySelector('#results-table tbody');
+const resultsTableHeadRow = document.getElementById('results-header-row');
 const priceCanvas = document.getElementById('price-chart');
 const searchInput = document.getElementById('item-search');
 const searchButton = document.getElementById('item-search-btn');
@@ -26,19 +36,27 @@ const chartTitle = document.getElementById('chart-title');
 const chartSubtitle = document.getElementById('chart-subtitle');
 const chartContainer = document.querySelector('.chart-container');
 const chartEmpty = document.getElementById('chart-empty');
+const leagueFilterContainer = document.getElementById('league-filters');
+const chartEmptyDefaultText = chartEmpty.textContent;
 
 async function loadData() {
-  const leaguePromises = LEAGUE_FILES.map(async (file) => {
-    const response = await fetch(file.path);
-    if (!response.ok) {
-      throw new Error(`Failed to load ${file.path}`);
-    }
-    const text = await response.text();
-    return parseLeagueCSV(text, file.label);
-  });
+  const loadedLeagues = [];
 
-  const leagueData = await Promise.all(leaguePromises);
-  return buildDataset(leagueData);
+  for (const file of LEAGUE_FILES) {
+    if (!file.path) continue;
+    try {
+      const response = await fetch(file.path);
+      if (!response.ok) {
+        throw new Error(`Failed to load ${file.path}`);
+      }
+      const text = await response.text();
+      loadedLeagues.push(parseLeagueCSV(text, file.label));
+    } catch (error) {
+      console.warn(`Skipping ${file.label}:`, error);
+    }
+  }
+
+  return buildDataset(loadedLeagues);
 }
 
 function parseLeagueCSV(text, expectedLeagueName) {
@@ -111,8 +129,23 @@ function buildDataset(leagueData) {
   return dataset;
 }
 
+function getSelectedLeagueNames() {
+  return LEAGUE_FILES
+    .filter(({ label }) => state.selectedLeagues.has(label))
+    .map(({ label }) => label);
+}
+
 function computeInvestmentResults(buyDay, sellDay) {
   if (buyDay >= sellDay) {
+    return [];
+  }
+
+  if (!state.data) {
+    return [];
+  }
+
+  const selectedLeagueNames = getSelectedLeagueNames();
+  if (!selectedLeagueNames.length) {
     return [];
   }
 
@@ -122,7 +155,9 @@ function computeInvestmentResults(buyDay, sellDay) {
   for (const [itemName, itemInfo] of Object.entries(state.data.items)) {
     const leagueMetrics = [];
 
-    for (const [leagueName, data] of Object.entries(itemInfo.leagueData)) {
+    for (const leagueName of selectedLeagueNames) {
+      const data = itemInfo.leagueData[leagueName];
+      if (!data) continue;
       const buyPrice = data.dayIndex[buyDay];
       const sellPrice = data.dayIndex[sellDay];
       if (!Number.isFinite(buyPrice) || !Number.isFinite(sellPrice) || buyPrice <= 0) {
@@ -184,8 +219,23 @@ function formatPercent(value) {
   return `${percentage >= 0 ? '+' : ''}${formatted}%`;
 }
 
+function renderTableHeader() {
+  if (!resultsTableHeadRow) return;
+  const selectedLeagueNames = getSelectedLeagueNames();
+  const headers = [
+    '<th>Item</th>',
+    '<th>AvgDailyROI</th>',
+    ...selectedLeagueNames.map((league) => `<th>${league}</th>`),
+    '<th>Avg Buy</th>',
+    '<th>Avg Sell</th>'
+  ];
+  resultsTableHeadRow.innerHTML = headers.join('');
+}
+
 function renderResultsTable(results) {
   resultsTableBody.innerHTML = '';
+  const selectedLeagueNames = getSelectedLeagueNames();
+  renderTableHeader();
 
   const rowsToRender = state.tableFilter
     ? results.filter((result) => result.itemName === state.tableFilter)
@@ -194,8 +244,10 @@ function renderResultsTable(results) {
   if (!rowsToRender.length) {
     const row = document.createElement('tr');
     const cell = document.createElement('td');
-    cell.colSpan = 7;
-    cell.textContent = 'No matching historical opportunities found for this window.';
+    cell.colSpan = selectedLeagueNames.length + 4;
+    cell.textContent = selectedLeagueNames.length
+      ? 'No matching historical opportunities found for this window.'
+      : 'Select at least one league to display results.';
     row.appendChild(cell);
     resultsTableBody.appendChild(row);
     return;
@@ -208,18 +260,19 @@ function renderResultsTable(results) {
     const avgBuyText = formatChaos(result.avgBuy);
     const avgSellText = formatChaos(result.avgSell);
     const avgDailyRoi = formatPercent(result.avgDailyReturn);
-    const leagueRois = LEAGUE_NAMES.map((leagueName) => {
+    const leagueRois = selectedLeagueNames.map((leagueName) => {
       const leagueMetrics = result.leagueBreakdown?.[leagueName];
       return formatPercent(leagueMetrics ? leagueMetrics.dailyReturn : NaN);
     });
 
-    row.innerHTML = [
+    const cells = [
       `<td class="item-name">${result.itemName}</td>`,
       `<td class="roi-cell">${avgDailyRoi}</td>`,
       ...leagueRois.map((value) => `<td>${value}</td>`),
       `<td>${avgBuyText}</td>`,
       `<td>${avgSellText}</td>`
-    ].join('');
+    ];
+    row.innerHTML = cells.join('');
     row.addEventListener('click', () => focusItem(result.itemName, { updateSearch: true }));
     resultsTableBody.appendChild(row);
   }
@@ -234,22 +287,27 @@ function populateItemSearch() {
   }
 }
 
-function renderPriceChart(itemName, itemData) {
+function renderPriceChart(itemName, itemData, leagues) {
   if (state.chart) {
     state.chart.destroy();
   }
 
   const datasets = [];
 
-  for (const [leagueName, data] of Object.entries(itemData.leagueData)) {
+  for (const leagueName of leagues) {
+    const data = itemData.leagueData[leagueName];
+    if (!data) continue;
     const sortedEntries = data.entries;
+    const color = LEAGUE_COLORS[leagueName] || undefined;
     datasets.push({
       label: leagueName,
       data: sortedEntries.map((entry) => ({ x: entry.day, y: entry.value })),
       tension: 0.25,
       fill: false,
       borderWidth: 2,
-      pointRadius: 2
+      pointRadius: 2,
+      borderColor: color,
+      backgroundColor: color
     });
   }
 
@@ -326,6 +384,9 @@ function handleFormSubmit(event) {
 }
 
 function handleSearch() {
+  if (!state.data) {
+    return;
+  }
   const value = searchInput.value.trim();
   if (!value) {
     state.tableFilter = null;
@@ -347,6 +408,9 @@ function handleSearch() {
 }
 
 function handleSearchInputChange() {
+  if (!state.data) {
+    return;
+  }
   if (searchInput.value.trim()) {
     return;
   }
@@ -359,6 +423,7 @@ function handleSearchInputChange() {
 }
 
 async function init() {
+  renderLeagueFilters();
   try {
     state.data = await loadData();
     populateItemSearch();
@@ -369,9 +434,10 @@ async function init() {
   } catch (error) {
     console.error(error);
     resultsTableBody.innerHTML = '';
+    renderTableHeader();
     const row = document.createElement('tr');
     const cell = document.createElement('td');
-    cell.colSpan = 4;
+    cell.colSpan = getSelectedLeagueNames().length + 4;
     cell.textContent = 'Failed to load data. Please refresh the page.';
     row.appendChild(cell);
     resultsTableBody.appendChild(row);
@@ -395,6 +461,7 @@ function clearChart() {
   chartSubtitle.textContent = 'Choose an item from the table or search to plot its price across leagues.';
   chartContainer.setAttribute('data-empty', 'true');
   chartEmpty.hidden = false;
+  chartEmpty.textContent = chartEmptyDefaultText;
 }
 
 function renderSelectedItemChart() {
@@ -405,11 +472,74 @@ function renderSelectedItemChart() {
   }
 
   const itemData = state.data.items[itemName];
+  const selectedLeagues = getSelectedLeagueNames();
+  const availableLeagues = selectedLeagues.filter((league) => itemData.leagueData[league]?.entries?.length);
+
   chartTitle.textContent = itemName;
+
+  if (!availableLeagues.length) {
+    if (state.chart) {
+      state.chart.destroy();
+      state.chart = null;
+    }
+    chartSubtitle.textContent = 'No price data available for the selected leagues.';
+    chartContainer.setAttribute('data-empty', 'true');
+    chartEmpty.hidden = false;
+    chartEmpty.textContent = 'No price data available for the selected leagues.';
+    return;
+  }
+
   chartSubtitle.textContent = 'Chaos Orb price across leagues';
   chartContainer.setAttribute('data-empty', 'false');
   chartEmpty.hidden = true;
-  renderPriceChart(itemName, itemData);
+  chartEmpty.textContent = chartEmptyDefaultText;
+  renderPriceChart(itemName, itemData, availableLeagues);
+}
+
+function handleLeagueToggle(event) {
+  const checkbox = event.target;
+  if (!(checkbox instanceof HTMLInputElement)) {
+    return;
+  }
+
+  if (checkbox.checked) {
+    state.selectedLeagues.add(checkbox.value);
+  } else {
+    state.selectedLeagues.delete(checkbox.value);
+  }
+
+  state.investmentResults = computeInvestmentResults(state.currentWindow.buyDay, state.currentWindow.sellDay);
+  renderResultsTable(state.investmentResults);
+  highlightSelectedRow();
+
+  if (state.selectedItem) {
+    renderSelectedItemChart();
+  } else {
+    clearChart();
+  }
+}
+
+function renderLeagueFilters() {
+  if (!leagueFilterContainer) return;
+  leagueFilterContainer.innerHTML = '';
+
+  for (const { label } of LEAGUE_FILES) {
+    const option = document.createElement('label');
+    option.className = 'checkbox-option';
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.value = label;
+    checkbox.checked = state.selectedLeagues.has(label);
+    checkbox.addEventListener('change', handleLeagueToggle);
+
+    const text = document.createElement('span');
+    text.textContent = label;
+
+    option.appendChild(checkbox);
+    option.appendChild(text);
+    leagueFilterContainer.appendChild(option);
+  }
 }
 
 function focusItem(itemName, { updateSearch } = {}) {
