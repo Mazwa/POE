@@ -244,6 +244,8 @@ td {
 
 .modal.is-visible {
   display: flex;
+.modal[hidden] {
+  display: none;
 }
 
 .modal-content {
