@@ -48,9 +48,12 @@
           <thead>
             <tr>
               <th>Item</th>
+              <th>Avg Daily ROI</th>
+              <th>Necropolis</th>
+              <th>Settlers</th>
+              <th>Phrecia</th>
               <th>Avg Buy (c)</th>
               <th>Avg Sell (c)</th>
-              <th>Avg Return</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -65,7 +68,7 @@
       <button class="modal-close" type="button" aria-label="Close">&times;</button>
       <h2 id="modal-title"></h2>
       <p class="modal-subtitle">Chaos Orb price across leagues</p>
-      <canvas id="price-chart" height="240"></canvas>
+      <canvas id="price-chart" height="120"></canvas>
 
       <section class="modal-section">
         <h3>Hold Period Returns</h3>
@@ -78,15 +81,6 @@
       </section>
     </div>
   </div>
-
-  <template id="league-return-template">
-    <tr>
-      <td class="league-name"></td>
-      <td class="league-buy"></td>
-      <td class="league-sell"></td>
-      <td class="league-return"></td>
-    </tr>
-  </template>
 
   <script type="module" src="script.js"></script>
 </body>

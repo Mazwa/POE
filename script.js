@@ -115,6 +115,7 @@ function computeInvestmentResults(buyDay, sellDay) {
   }
 
   const results = [];
+  const holdDuration = sellDay - buyDay;
 
   for (const [itemName, itemInfo] of Object.entries(state.data.items)) {
     const leagueMetrics = [];
@@ -125,26 +126,36 @@ function computeInvestmentResults(buyDay, sellDay) {
       if (!Number.isFinite(buyPrice) || !Number.isFinite(sellPrice) || buyPrice <= 0) {
         continue;
       }
-      const compoundReturn = sellPrice / buyPrice - 1;
-      leagueMetrics.push({ leagueName, buyPrice, sellPrice, compoundReturn });
+      const growthFactor = sellPrice / buyPrice;
+      if (!Number.isFinite(growthFactor) || growthFactor <= 0) {
+        continue;
+      }
+      const compoundReturn = growthFactor - 1;
+      const dailyReturn = Math.pow(growthFactor, 1 / holdDuration) - 1;
+      leagueMetrics.push({ leagueName, buyPrice, sellPrice, compoundReturn, dailyReturn });
     }
 
     if (!leagueMetrics.length) continue;
 
     const avgBuy = average(leagueMetrics.map((m) => m.buyPrice));
     const avgSell = average(leagueMetrics.map((m) => m.sellPrice));
-    const avgReturn = average(leagueMetrics.map((m) => m.compoundReturn));
+    const avgDailyReturn = average(leagueMetrics.map((m) => m.dailyReturn));
+    const leagueDailyReturns = Object.fromEntries(
+      leagueMetrics.map((metric) => [metric.leagueName, metric.dailyReturn])
+    );
 
     results.push({
       itemName,
       avgBuy,
       avgSell,
-      avgReturn,
-      leagueMetrics: leagueMetrics.sort((a, b) => b.compoundReturn - a.compoundReturn)
+      avgDailyReturn,
+      leagueDailyReturns
     });
   }
 
-  return results.sort((a, b) => b.avgReturn - a.avgReturn);
+  return results
+    .filter((result) => Number.isFinite(result.avgDailyReturn))
+    .sort((a, b) => b.avgDailyReturn - a.avgDailyReturn);
 }
 
 function average(values) {
@@ -171,7 +182,7 @@ function renderResultsTable(results) {
   if (!results.length) {
     const row = document.createElement('tr');
     const cell = document.createElement('td');
-    cell.colSpan = 4;
+    cell.colSpan = 7;
     cell.textContent = 'No matching historical opportunities found for this window.';
     row.appendChild(cell);
     resultsTableBody.appendChild(row);
@@ -181,49 +192,20 @@ function renderResultsTable(results) {
   for (const result of results.slice(0, 25)) {
     const row = document.createElement('tr');
     row.dataset.itemName = result.itemName;
+    const leagueCells = LEAGUE_FILES.map(({ label }) => {
+      const dailyReturn = result.leagueDailyReturns[label];
+      return `<td>${formatPercent(dailyReturn)}</td>`;
+    }).join('');
     row.innerHTML = `
       <td>${result.itemName}</td>
+      <td>${formatPercent(result.avgDailyReturn)}</td>
+      ${leagueCells}
       <td>${formatChaos(result.avgBuy)}</td>
       <td>${formatChaos(result.avgSell)}</td>
-      <td>${formatPercent(result.avgReturn)}</td>
     `;
     row.addEventListener('click', () => openModal(result.itemName));
     resultsTableBody.appendChild(row);
-
-    const detailRow = document.createElement('tr');
-    detailRow.classList.add('league-details');
-    const detailCell = document.createElement('td');
-    detailCell.colSpan = 4;
-    detailCell.innerHTML = createLeagueMetricsTable(result.leagueMetrics);
-    detailRow.appendChild(detailCell);
-    resultsTableBody.appendChild(detailRow);
   }
-}
-
-function createLeagueMetricsTable(metrics) {
-  if (!metrics.length) return '';
-  const header = `
-    <thead>
-      <tr>
-        <th>League</th>
-        <th>Buy (c)</th>
-        <th>Sell (c)</th>
-        <th>Return</th>
-      </tr>
-    </thead>`;
-  const rows = metrics
-    .map(
-      (metric) => `
-        <tr>
-          <td>${metric.leagueName}</td>
-          <td>${formatChaos(metric.buyPrice)}</td>
-          <td>${formatChaos(metric.sellPrice)}</td>
-          <td>${formatPercent(metric.compoundReturn)}</td>
-        </tr>`
-    )
-    .join('');
-
-  return `<table class="league-metrics">${header}<tbody>${rows}</tbody></table>`;
 }
 
 function populateItemSearch() {
@@ -243,13 +225,17 @@ function openModal(itemName) {
   renderPriceChart(itemName, itemData);
   renderHoldTable(itemData);
 
+  modal.classList.add('is-visible');
   modal.hidden = false;
+  modal.removeAttribute('hidden');
   modal.focus({ preventScroll: true });
   document.body.style.overflow = 'hidden';
 }
 
 function closeModal() {
+  modal.classList.remove('is-visible');
   modal.hidden = true;
+  modal.setAttribute('hidden', '');
   document.body.style.overflow = '';
   if (state.chart) {
     state.chart.destroy();
