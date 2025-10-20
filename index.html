@@ -30,6 +30,10 @@
         </div>
         <button type="submit" class="primary-btn">Find Opportunities</button>
       </form>
+      <div class="league-filters">
+        <h3>Leagues</h3>
+        <div id="league-filters" class="checkbox-group"></div>
+      </div>
       <p class="hint">Results use data from the first three months of each league and only include chaos-orb denominated prices.</p>
     </section>
 
@@ -46,15 +50,7 @@
       <div class="table-wrapper">
         <table id="results-table">
           <thead>
-            <tr>
-              <th>Item</th>
-              <th>AvgDailyROI</th>
-              <th>Necropolis</th>
-              <th>Settlers</th>
-              <th>Phrecia</th>
-              <th>Avg Buy</th>
-              <th>Avg Sell</th>
-            </tr>
+            <tr id="results-header-row"></tr>
           </thead>
           <tbody></tbody>
         </table>
