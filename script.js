@@ -76,7 +76,13 @@ function parseLeagueCSV(text, expectedLeagueName) {
   const entries = [];
   for (const row of rows) {
     if (!row.trim()) continue;
-    const [league, dateStr, get, pay, valueStr, confidence] = row.split(';');
+    const [leagueRaw, dateStrRaw, getRaw, payRaw, valueStrRaw, confidenceRaw] = row.split(';');
+    const league = leagueRaw?.trim();
+    const dateStr = dateStrRaw?.trim();
+    const get = getRaw?.trim();
+    const pay = payRaw?.trim();
+    const valueStr = valueStrRaw?.trim();
+    const confidence = confidenceRaw?.trim();
     if (league !== expectedLeagueName) continue;
     if (pay !== 'Chaos Orb') continue;
     const value = Number.parseFloat(valueStr);
