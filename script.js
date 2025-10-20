@@ -140,8 +140,13 @@ function computeInvestmentResults(buyDay, sellDay) {
     const avgBuy = average(leagueMetrics.map((m) => m.buyPrice));
     const avgSell = average(leagueMetrics.map((m) => m.sellPrice));
     const avgDailyReturn = average(leagueMetrics.map((m) => m.dailyReturn));
-    const leagueDailyReturns = Object.fromEntries(
-      leagueMetrics.map((metric) => [metric.leagueName, metric.dailyReturn])
+    const leagueBreakdown = Object.fromEntries(
+      leagueMetrics.map((metric) => [metric.leagueName, {
+        buyPrice: metric.buyPrice,
+        sellPrice: metric.sellPrice,
+        compoundReturn: metric.compoundReturn,
+        dailyReturn: metric.dailyReturn
+      }])
     );
 
     results.push({
@@ -149,7 +154,7 @@ function computeInvestmentResults(buyDay, sellDay) {
       avgBuy,
       avgSell,
       avgDailyReturn,
-      leagueDailyReturns
+      leagueBreakdown
     });
   }
 
@@ -182,26 +187,47 @@ function renderResultsTable(results) {
   if (!results.length) {
     const row = document.createElement('tr');
     const cell = document.createElement('td');
-    cell.colSpan = 7;
+    cell.colSpan = 6;
     cell.textContent = 'No matching historical opportunities found for this window.';
     row.appendChild(cell);
     resultsTableBody.appendChild(row);
     return;
   }
 
+  const holdDuration = state.currentWindow.sellDay - state.currentWindow.buyDay;
+
   for (const result of results.slice(0, 25)) {
     const row = document.createElement('tr');
     row.dataset.itemName = result.itemName;
-    const leagueCells = LEAGUE_FILES.map(({ label }) => {
-      const dailyReturn = result.leagueDailyReturns[label];
-      return `<td>${formatPercent(dailyReturn)}</td>`;
-    }).join('');
+    const leagueNames = [];
+    const buyValues = [];
+    const sellValues = [];
+    const returnValues = [];
+
+    for (const { label } of LEAGUE_FILES) {
+      const leagueMetrics = result.leagueBreakdown[label];
+      leagueNames.push(`<div class="stacked-cell__label">${label}</div>`);
+      buyValues.push(`<div class="stacked-cell__value">${formatChaos(leagueMetrics?.buyPrice)}</div>`);
+      sellValues.push(`<div class="stacked-cell__value">${formatChaos(leagueMetrics?.sellPrice)}</div>`);
+      returnValues.push(`<div class="stacked-cell__value">${formatPercent(leagueMetrics?.compoundReturn)}</div>`);
+    }
+
+    const avgBuyText = formatChaos(result.avgBuy);
+    const avgSellText = formatChaos(result.avgSell);
+    const avgBuyDisplay = avgBuyText === '–' ? avgBuyText : `${avgBuyText}c`;
+    const avgSellDisplay = avgSellText === '–' ? avgSellText : `${avgSellText}c`;
+
     row.innerHTML = `
-      <td>${result.itemName}</td>
-      <td>${formatPercent(result.avgDailyReturn)}</td>
-      ${leagueCells}
-      <td>${formatChaos(result.avgBuy)}</td>
-      <td>${formatChaos(result.avgSell)}</td>
+      <td class="item-cell">
+        <div class="item-name">${result.itemName}</div>
+        <div class="item-meta">Hold ${state.currentWindow.buyDay} → ${state.currentWindow.sellDay} (${holdDuration} day${holdDuration === 1 ? '' : 's'})</div>
+        <div class="item-averages">Avg Buy: ${avgBuyDisplay} · Avg Sell: ${avgSellDisplay}</div>
+      </td>
+      <td class="roi-cell">${formatPercent(result.avgDailyReturn)}</td>
+      <td class="stacked-cell">${leagueNames.join('')}</td>
+      <td class="stacked-cell">${buyValues.join('')}</td>
+      <td class="stacked-cell">${sellValues.join('')}</td>
+      <td class="stacked-cell">${returnValues.join('')}</td>
     `;
     row.addEventListener('click', () => openModal(result.itemName));
     resultsTableBody.appendChild(row);
