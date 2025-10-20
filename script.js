@@ -24,7 +24,8 @@ const state = {
   selectedItem: null,
   tableFilter: null,
   selectedLeagues: new Set(DEFAULT_SELECTED_LEAGUES),
-  priceFilter: { min: 0, max: 99999 }
+  priceFilter: { min: 0, max: 99999 },
+  excludeLowConfidence: true
 };
 
 const resultsTableBody = document.querySelector('#results-table tbody');
@@ -43,6 +44,7 @@ const chartContainer = document.querySelector('.chart-container');
 const chartEmpty = document.getElementById('chart-empty');
 const leagueFilterContainer = document.getElementById('league-filters');
 const chartEmptyDefaultText = chartEmpty.textContent;
+const confidenceFilterInput = document.getElementById('exclude-low-confidence');
 
 async function loadData() {
   const loadedLeagues = [];
@@ -113,7 +115,9 @@ function buildDataset(leagueData) {
 
     for (const itemName of Object.keys(items)) {
       items[itemName].sort((a, b) => a.day - b.day);
-      const dayIndex = Object.fromEntries(items[itemName].map((entry) => [entry.day, entry.value]));
+      const dayIndex = Object.fromEntries(
+        items[itemName].map((entry) => [entry.day, { value: entry.value, confidence: entry.confidence }])
+      );
       items[itemName] = { entries: items[itemName], dayIndex };
     }
 
@@ -163,10 +167,20 @@ function computeInvestmentResults(buyDay, sellDay) {
     for (const leagueName of selectedLeagueNames) {
       const data = itemInfo.leagueData[leagueName];
       if (!data) continue;
-      const buyPrice = data.dayIndex[buyDay];
-      const sellPrice = data.dayIndex[sellDay];
+      const buyPoint = data.dayIndex[buyDay];
+      const sellPoint = data.dayIndex[sellDay];
+      const buyPrice = buyPoint?.value;
+      const sellPrice = sellPoint?.value;
       if (!Number.isFinite(buyPrice) || !Number.isFinite(sellPrice) || buyPrice <= 0) {
         continue;
+      }
+
+      if (state.excludeLowConfidence) {
+        const buyConfidence = buyPoint?.confidence;
+        const sellConfidence = sellPoint?.confidence;
+        if (buyConfidence === 'Low' || sellConfidence === 'Low') {
+          continue;
+        }
       }
       const growthFactor = sellPrice / buyPrice;
       if (!Number.isFinite(growthFactor) || growthFactor <= 0) {
@@ -498,6 +512,24 @@ function handlePriceFilterChange() {
   }
 }
 
+function handleConfidenceFilterChange(event) {
+  if (!(event.target instanceof HTMLInputElement)) {
+    return;
+  }
+
+  state.excludeLowConfidence = event.target.checked;
+
+  state.investmentResults = computeInvestmentResults(state.currentWindow.buyDay, state.currentWindow.sellDay);
+  renderResultsTable(state.investmentResults);
+  highlightSelectedRow();
+
+  if (state.selectedItem) {
+    renderSelectedItemChart();
+  } else {
+    clearChart();
+  }
+}
+
 async function init() {
   renderLeagueFilters();
   try {
@@ -650,5 +682,8 @@ searchInput.addEventListener('keydown', (event) => {
 });
 minPriceInput.addEventListener('change', handlePriceFilterChange);
 maxPriceInput.addEventListener('change', handlePriceFilterChange);
+if (confidenceFilterInput) {
+  confidenceFilterInput.addEventListener('change', handleConfidenceFilterChange);
+}
 
 document.addEventListener('DOMContentLoaded', init);

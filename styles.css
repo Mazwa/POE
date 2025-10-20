@@ -248,6 +248,24 @@ input[type="search"]:focus {
   text-transform: uppercase;
 }
 
+.confidence-toggle {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 220px;
+}
+
+.confidence-toggle-label {
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.confidence-toggle .checkbox-option {
+  width: fit-content;
+}
+
 .price-filter-inputs {
   display: inline-flex;
   align-items: center;
