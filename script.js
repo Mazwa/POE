@@ -220,7 +220,7 @@ function renderResultsTable(results) {
       `<td>${avgBuyText}</td>`,
       `<td>${avgSellText}</td>`
     ].join('');
-    row.addEventListener('click', () => focusItem(result.itemName));
+    row.addEventListener('click', () => focusItem(result.itemName, { updateSearch: true }));
     resultsTableBody.appendChild(row);
   }
 }
@@ -417,6 +417,7 @@ function focusItem(itemName, { updateSearch } = {}) {
     return;
   }
   state.selectedItem = itemName;
+  state.tableFilter = itemName;
   if (updateSearch) {
     searchInput.value = itemName;
   }
