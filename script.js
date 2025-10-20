@@ -4,6 +4,7 @@ const LEAGUE_FILES = [
   { label: 'Phrecia', path: 'Phrecia.currency.csv' }
 ];
 
+const HOLD_DURATIONS = [1, 2, 4, 8, 16, 32, 64];
 const LEAGUE_NAMES = LEAGUE_FILES.map(({ label }) => label);
 const THREE_MONTHS_IN_DAYS = 92;
 
@@ -194,15 +195,13 @@ function renderResultsTable(results) {
     const row = document.createElement('tr');
     const cell = document.createElement('td');
     cell.colSpan = 7;
-    cell.textContent = state.tableFilter
-      ? 'No historical data matched that item for this buy/sell window.'
-      : 'No matching historical opportunities found for this window.';
+    cell.textContent = 'No matching historical opportunities found for this window.';
     row.appendChild(cell);
     resultsTableBody.appendChild(row);
     return;
   }
 
-  for (const result of rowsToRender) {
+  for (const result of results.slice(0, 25)) {
     const row = document.createElement('tr');
     row.dataset.itemName = result.itemName;
 
@@ -221,9 +220,7 @@ function renderResultsTable(results) {
       `<td>${avgBuyText}</td>`,
       `<td>${avgSellText}</td>`
     ].join('');
-    row.addEventListener('click', () => {
-      focusItem(result.itemName, { updateSearch: true });
-    });
+    row.addEventListener('click', () => openModal(result.itemName));
     resultsTableBody.appendChild(row);
   }
 }
@@ -349,18 +346,14 @@ function handleSearch() {
 }
 
 function handleSearchInputChange() {
-  const value = searchInput.value.trim();
-  if (!value) {
-    state.tableFilter = null;
-    state.selectedItem = null;
-    renderResultsTable(state.investmentResults);
-    highlightSelectedRow();
-    clearChart();
+  if (searchInput.value.trim()) {
     return;
   }
-
-  if (state.data?.items[value]) {
-    focusItem(value, { updateSearch: false });
+  state.tableFilter = null;
+  renderResultsTable(state.investmentResults);
+  highlightSelectedRow();
+  if (state.selectedItem) {
+    renderSelectedItemChart();
   }
 }
 
