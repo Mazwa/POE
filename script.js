@@ -30,6 +30,9 @@ const state = {
 const resultsTableBody = document.querySelector('#results-table tbody');
 const resultsTableHeadRow = document.getElementById('results-header-row');
 const priceCanvas = document.getElementById('price-chart');
+const screenerForm = document.getElementById('screener-form');
+const buyDayInput = document.getElementById('buy-day');
+const sellDayInput = document.getElementById('sell-day');
 const searchInput = document.getElementById('item-search');
 const searchButton = document.getElementById('item-search-btn');
 const minPriceInput = document.getElementById('min-buy-price');
@@ -255,7 +258,14 @@ function renderResultsTable(results) {
     if (!Number.isFinite(avgBuy)) {
       return false;
     }
-    return avgBuy >= min && avgBuy <= max;
+
+    const isCollapsedRange = Math.abs(max - min) < Number.EPSILON;
+    if (isCollapsedRange) {
+      return Math.abs(avgBuy - min) < Number.EPSILON;
+    }
+
+    const meetsMin = min === 0 ? avgBuy >= min : avgBuy > min;
+    return meetsMin && avgBuy <= max;
   });
 
   const isItemFilterActive = Boolean(state.tableFilter);
@@ -398,18 +408,33 @@ function renderPriceChart(itemName, itemData, leagues) {
   });
 }
 
-function handleFormSubmit(event) {
-  event.preventDefault();
-  const buyDay = Number.parseInt(event.target['buy-day'].value, 10);
-  const sellDay = Number.parseInt(event.target['sell-day'].value, 10);
-  if (!Number.isFinite(buyDay) || !Number.isFinite(sellDay)) return;
+function applyWindowChange() {
+  if (!buyDayInput || !sellDayInput) {
+    return;
+  }
+
+  const buyDay = Number.parseInt(buyDayInput.value, 10);
+  const sellDay = Number.parseInt(sellDayInput.value, 10);
+  if (!Number.isFinite(buyDay) || !Number.isFinite(sellDay)) {
+    return;
+  }
+
   state.currentWindow = { buyDay, sellDay };
+
+  if (!state.data) {
+    return;
+  }
+
   state.investmentResults = computeInvestmentResults(buyDay, sellDay);
   renderResultsTable(state.investmentResults);
   highlightSelectedRow();
   if (state.selectedItem) {
     renderSelectedItemChart();
   }
+}
+
+function handleWindowInputChange() {
+  applyWindowChange();
 }
 
 function handleSearch() {
@@ -479,9 +504,7 @@ async function init() {
   try {
     state.data = await loadData();
     populateItemSearch();
-    state.investmentResults = computeInvestmentResults(state.currentWindow.buyDay, state.currentWindow.sellDay);
-    renderResultsTable(state.investmentResults);
-    highlightSelectedRow();
+    applyWindowChange();
     clearChart();
   } catch (error) {
     console.error(error);
@@ -608,7 +631,17 @@ function focusItem(itemName, { updateSearch } = {}) {
   highlightSelectedRow();
 }
 
-document.getElementById('screener-form').addEventListener('submit', handleFormSubmit);
+if (screenerForm) {
+  screenerForm.addEventListener('submit', (event) => event.preventDefault());
+}
+if (buyDayInput) {
+  buyDayInput.addEventListener('input', handleWindowInputChange);
+  buyDayInput.addEventListener('change', handleWindowInputChange);
+}
+if (sellDayInput) {
+  sellDayInput.addEventListener('input', handleWindowInputChange);
+  sellDayInput.addEventListener('change', handleWindowInputChange);
+}
 searchButton.addEventListener('click', handleSearch);
 searchInput.addEventListener('input', handleSearchInputChange);
 searchInput.addEventListener('keydown', (event) => {
