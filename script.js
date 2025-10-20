@@ -285,6 +285,14 @@ function renderPriceChart(itemName, itemData) {
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      layout: {
+        padding: {
+          top: 6,
+          bottom: 6,
+          left: 8,
+          right: 12
+        }
+      },
       scales: {
         x: {
           type: 'linear',
@@ -313,7 +321,14 @@ function renderPriceChart(itemName, itemData) {
           }
         },
         legend: {
-          position: 'bottom'
+          position: 'bottom',
+          labels: {
+            boxWidth: 12,
+            padding: 10,
+            font: {
+              size: 11
+            }
+          }
         }
       }
     }
