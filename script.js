@@ -201,7 +201,7 @@ function renderResultsTable(results) {
     return;
   }
 
-  for (const result of results.slice(0, 25)) {
+  for (const result of rowsToRender) {
     const row = document.createElement('tr');
     row.dataset.itemName = result.itemName;
 
@@ -220,7 +220,7 @@ function renderResultsTable(results) {
       `<td>${avgBuyText}</td>`,
       `<td>${avgSellText}</td>`
     ].join('');
-    row.addEventListener('click', () => openModal(result.itemName));
+    row.addEventListener('click', () => focusItem(result.itemName));
     resultsTableBody.appendChild(row);
   }
 }
@@ -342,6 +342,7 @@ function handleSearch() {
     return;
   }
 
+  state.tableFilter = value;
   focusItem(value, { updateSearch: true });
 }
 
@@ -364,6 +365,7 @@ async function init() {
     state.investmentResults = computeInvestmentResults(state.currentWindow.buyDay, state.currentWindow.sellDay);
     renderResultsTable(state.investmentResults);
     highlightSelectedRow();
+    clearChart();
   } catch (error) {
     console.error(error);
     resultsTableBody.innerHTML = '';
@@ -415,7 +417,6 @@ function focusItem(itemName, { updateSearch } = {}) {
     return;
   }
   state.selectedItem = itemName;
-  state.tableFilter = itemName;
   if (updateSearch) {
     searchInput.value = itemName;
   }
