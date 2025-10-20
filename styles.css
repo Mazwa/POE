@@ -1,0 +1,327 @@
+:root {
+  color-scheme: light dark;
+  --background: #0f172a;
+  --card-bg: rgba(15, 23, 42, 0.75);
+  --card-border: rgba(148, 163, 184, 0.25);
+  --text-primary: #e2e8f0;
+  --text-secondary: #94a3b8;
+  --accent: #f97316;
+  --accent-contrast: #fff7ed;
+  --surface: rgba(30, 41, 59, 0.8);
+  --shadow: 0 16px 40px rgba(15, 23, 42, 0.35);
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: radial-gradient(circle at top, rgba(15, 118, 110, 0.25), transparent 55%),
+              radial-gradient(circle at 20% 80%, rgba(249, 115, 22, 0.2), transparent 45%),
+              var(--background);
+  color: var(--text-primary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 3rem 1.5rem 4rem;
+}
+
+.page-header {
+  max-width: 960px;
+  text-align: center;
+  margin-bottom: 2.5rem;
+}
+
+.page-header h1 {
+  font-size: clamp(2rem, 3vw + 1rem, 3.2rem);
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.tagline {
+  color: var(--text-secondary);
+  font-size: 1.05rem;
+  margin-top: 0.75rem;
+}
+
+main {
+  width: min(1040px, 100%);
+  display: grid;
+  gap: 1.75rem;
+}
+
+.controls-card,
+.results-card {
+  background: var(--surface);
+  border: 1px solid var(--card-border);
+  border-radius: 20px;
+  padding: 1.75rem;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(14px);
+}
+
+.controls-card h2,
+.results-card h2 {
+  margin-top: 0;
+  font-size: 1.5rem;
+}
+
+.screener-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1.25rem;
+  align-items: end;
+  margin-top: 1.25rem;
+}
+
+.field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+label {
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+}
+
+input[type="number"],
+input[type="search"] {
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  border-radius: 12px;
+  padding: 0.6rem 0.75rem;
+  font-size: 1rem;
+  background: rgba(15, 23, 42, 0.6);
+  color: var(--text-primary);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+input[type="number"]:focus,
+input[type="search"]:focus {
+  outline: none;
+  border-color: rgba(249, 115, 22, 0.65);
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.2);
+}
+
+.primary-btn,
+.secondary-btn {
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0.7rem 1rem;
+  transition: transform 0.15s ease, box-shadow 0.2s ease;
+}
+
+.primary-btn {
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.9), rgba(251, 191, 36, 0.9));
+  color: var(--accent-contrast);
+  box-shadow: 0 10px 20px rgba(249, 115, 22, 0.25);
+}
+
+.secondary-btn {
+  background: rgba(148, 163, 184, 0.18);
+  color: var(--text-primary);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.primary-btn:hover,
+.secondary-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 24px rgba(15, 23, 42, 0.35);
+}
+
+.primary-btn:active,
+.secondary-btn:active {
+  transform: translateY(0);
+}
+
+.hint {
+  margin-top: 1rem;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.results-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.search-wrapper {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.search-input {
+  width: min(240px, 60vw);
+}
+
+.table-wrapper {
+  overflow-x: auto;
+  margin-top: 1.25rem;
+  border-radius: 12px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 520px;
+}
+
+thead {
+  background: rgba(15, 23, 42, 0.9);
+}
+
+thead th {
+  text-align: left;
+  padding: 0.75rem 0.9rem;
+  font-size: 0.85rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+tbody tr {
+  background: rgba(30, 41, 59, 0.75);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+  transition: background 0.15s ease;
+}
+
+tbody tr:hover {
+  background: rgba(51, 65, 85, 0.8);
+}
+
+.league-details {
+  background: rgba(15, 23, 42, 0.65);
+}
+
+.league-details td {
+  padding: 0.4rem 0.9rem 1rem;
+}
+
+.league-metrics {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 0.35rem;
+}
+
+.league-metrics thead tr {
+  background: rgba(15, 23, 42, 0.9);
+}
+
+.league-metrics th,
+.league-metrics td {
+  padding: 0.4rem 0.6rem;
+  font-size: 0.85rem;
+}
+
+.league-metrics tbody tr:nth-child(odd) {
+  background: rgba(30, 41, 59, 0.55);
+}
+
+.league-metrics tbody tr:nth-child(even) {
+  background: rgba(30, 41, 59, 0.35);
+}
+
+td {
+  padding: 0.8rem 0.9rem;
+  font-size: 0.95rem;
+}
+
+.table-footnote {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  margin-top: 1rem;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.78);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  backdrop-filter: blur(8px);
+  z-index: 10;
+}
+
+.modal-content {
+  position: relative;
+  background: rgba(15, 23, 42, 0.95);
+  border-radius: 20px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  padding: 2rem;
+  width: min(920px, 95vw);
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow);
+}
+
+.modal-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 1.8rem;
+  cursor: pointer;
+}
+
+.modal-subtitle {
+  color: var(--text-secondary);
+  margin-top: 0.3rem;
+  margin-bottom: 1.5rem;
+}
+
+.modal-section {
+  margin-top: 2rem;
+}
+
+@media (max-width: 720px) {
+  body {
+    padding: 2.5rem 1rem 3rem;
+  }
+
+  .controls-card,
+  .results-card {
+    padding: 1.5rem;
+  }
+
+  .screener-form {
+    grid-template-columns: 1fr;
+  }
+
+  .results-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .search-wrapper {
+    width: 100%;
+  }
+
+  .search-input {
+    width: 100%;
+  }
+}

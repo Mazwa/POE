@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Path of Exile Historical Pricing Explorer</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <header class="page-header">
+    <h1>Path of Exile Historical Pricing Explorer</h1>
+    <p class="tagline">Discover profitable trades across past leagues using Chaos Orb valuations.</p>
+  </header>
+
+  <main>
+    <section class="controls-card">
+      <h2>Investment Screener</h2>
+      <form id="screener-form" class="screener-form" autocomplete="off">
+        <div class="field-group">
+          <label for="buy-day">Buy on day</label>
+          <input type="number" id="buy-day" name="buy-day" min="0" value="3" required />
+        </div>
+        <div class="field-group">
+          <label for="sell-day">Sell on day</label>
+          <input type="number" id="sell-day" name="sell-day" min="1" value="6" required />
+        </div>
+        <button type="submit" class="primary-btn">Find Opportunities</button>
+      </form>
+      <p class="hint">Results use data from the first three months of each league and only include chaos-orb denominated prices.</p>
+    </section>
+
+    <section class="results-card">
+      <div class="results-header">
+        <h2>Top Historical Returns</h2>
+        <div class="search-wrapper">
+          <label for="item-search" class="visually-hidden">Search items</label>
+          <input id="item-search" class="search-input" type="search" placeholder="Search for an item or currency" list="item-options" />
+          <datalist id="item-options"></datalist>
+          <button id="item-search-btn" class="secondary-btn" type="button">View</button>
+        </div>
+      </div>
+      <div class="table-wrapper">
+        <table id="results-table">
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Avg Buy (c)</th>
+              <th>Avg Sell (c)</th>
+              <th>Avg Return</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="table-footnote">Click any row to inspect detailed league-by-league performance and price history.</p>
+    </section>
+  </main>
+
+  <div id="modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" hidden tabindex="-1">
+    <div class="modal-content">
+      <button class="modal-close" type="button" aria-label="Close">&times;</button>
+      <h2 id="modal-title"></h2>
+      <p class="modal-subtitle">Chaos Orb price across leagues</p>
+      <canvas id="price-chart" height="240"></canvas>
+
+      <section class="modal-section">
+        <h3>Hold Period Returns</h3>
+        <div class="table-wrapper">
+          <table id="hold-table">
+            <thead></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <template id="league-return-template">
+    <tr>
+      <td class="league-name"></td>
+      <td class="league-buy"></td>
+      <td class="league-sell"></td>
+      <td class="league-return"></td>
+    </tr>
+  </template>
+
+  <script type="module" src="script.js"></script>
+</body>
+</html>
