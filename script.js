@@ -12,19 +12,20 @@ const state = {
   data: null,
   investmentResults: [],
   currentWindow: { buyDay: 3, sellDay: 6 },
-  chart: null
+  chart: null,
+  selectedItem: null,
+  tableFilter: null
 };
 
 const resultsTableBody = document.querySelector('#results-table tbody');
-const holdTableHead = document.querySelector('#hold-table thead');
-const holdTableBody = document.querySelector('#hold-table tbody');
-const modal = document.getElementById('modal');
-const modalTitle = document.getElementById('modal-title');
-const modalCloseBtn = document.querySelector('.modal-close');
 const priceCanvas = document.getElementById('price-chart');
 const searchInput = document.getElementById('item-search');
 const searchButton = document.getElementById('item-search-btn');
 const datalist = document.getElementById('item-options');
+const chartTitle = document.getElementById('chart-title');
+const chartSubtitle = document.getElementById('chart-subtitle');
+const chartContainer = document.querySelector('.chart-container');
+const chartEmpty = document.getElementById('chart-empty');
 
 async function loadData() {
   const leaguePromises = LEAGUE_FILES.map(async (file) => {
@@ -185,7 +186,12 @@ function formatPercent(value) {
 
 function renderResultsTable(results) {
   resultsTableBody.innerHTML = '';
-  if (!results.length) {
+
+  const rowsToRender = state.tableFilter
+    ? results.filter((result) => result.itemName === state.tableFilter)
+    : results.slice(0, 25);
+
+  if (!rowsToRender.length) {
     const row = document.createElement('tr');
     const cell = document.createElement('td');
     cell.colSpan = 7;
@@ -228,43 +234,15 @@ function populateItemSearch() {
   }
 }
 
-function openModal(itemName) {
-  const itemData = state.data.items[itemName];
-  if (!itemData) return;
-
-  modalTitle.textContent = itemName;
-  renderPriceChart(itemName, itemData);
-  renderHoldTable(itemData);
-
-  modal.classList.add('is-visible');
-  modal.hidden = false;
-  modal.removeAttribute('hidden');
-  modal.focus({ preventScroll: true });
-  document.body.style.overflow = 'hidden';
-}
-
-function closeModal() {
-  modal.classList.remove('is-visible');
-  modal.hidden = true;
-  modal.setAttribute('hidden', '');
-  document.body.style.overflow = '';
-  if (state.chart) {
-    state.chart.destroy();
-    state.chart = null;
-  }
-}
-
 function renderPriceChart(itemName, itemData) {
   if (state.chart) {
     state.chart.destroy();
   }
 
   const datasets = [];
-  const labelsSet = new Set();
 
   for (const [leagueName, data] of Object.entries(itemData.leagueData)) {
     const sortedEntries = data.entries;
-    sortedEntries.forEach((entry) => labelsSet.add(entry.day));
     datasets.push({
       label: leagueName,
       data: sortedEntries.map((entry) => ({ x: entry.day, y: entry.value })),
@@ -274,8 +252,6 @@ function renderPriceChart(itemName, itemData) {
       pointRadius: 2
     });
   }
-
-  const labels = Array.from(labelsSet).sort((a, b) => a - b);
 
   state.chart = new Chart(priceCanvas, {
     type: 'line',
@@ -335,57 +311,6 @@ function renderPriceChart(itemName, itemData) {
   });
 }
 
-function renderHoldTable(itemData) {
-  const leagueNames = Object.keys(itemData.leagueData).sort((a, b) => a.localeCompare(b));
-  holdTableHead.innerHTML = '';
-  holdTableBody.innerHTML = '';
-
-  const headerRow = document.createElement('tr');
-  headerRow.innerHTML = `<th>Hold (days)</th><th>Overall Avg Return</th>${leagueNames
-    .map((name) => `<th>${name}</th>`)
-    .join('')}`;
-  holdTableHead.appendChild(headerRow);
-
-  for (const duration of HOLD_DURATIONS) {
-    const leagueAverages = leagueNames.map((leagueName) => {
-      const returns = computeHoldReturns(itemData.leagueData[leagueName], duration);
-      return {
-        leagueName,
-        averageReturn: average(returns),
-        samples: returns
-      };
-    });
-
-    const overallAvg = average(leagueAverages.flatMap((entry) => entry.samples));
-
-    const row = document.createElement('tr');
-    row.innerHTML = [`<td>${duration}</td>`, `<td>${formatPercent(overallAvg)}</td>`]
-      .concat(leagueAverages.map((entry) => `<td>${formatPercent(entry.averageReturn)}</td>`))
-      .join('');
-    holdTableBody.appendChild(row);
-  }
-}
-
-function computeHoldReturns(itemLeagueData, duration) {
-  const returns = [];
-  if (!itemLeagueData) return returns;
-  const { dayIndex } = itemLeagueData;
-  const days = Object.keys(dayIndex)
-    .map((d) => Number.parseInt(d, 10))
-    .sort((a, b) => a - b);
-
-  for (const day of days) {
-    const endDay = day + duration;
-    if (!Number.isFinite(dayIndex[day]) || !Number.isFinite(dayIndex[endDay])) continue;
-    const startPrice = dayIndex[day];
-    const endPrice = dayIndex[endDay];
-    if (startPrice > 0 && endPrice > 0) {
-      returns.push(endPrice / startPrice - 1);
-    }
-  }
-  return returns;
-}
-
 function handleFormSubmit(event) {
   event.preventDefault();
   const buyDay = Number.parseInt(event.target['buy-day'].value, 10);
@@ -394,21 +319,41 @@ function handleFormSubmit(event) {
   state.currentWindow = { buyDay, sellDay };
   state.investmentResults = computeInvestmentResults(buyDay, sellDay);
   renderResultsTable(state.investmentResults);
+  highlightSelectedRow();
+  if (state.selectedItem) {
+    renderSelectedItemChart();
+  }
 }
 
 function handleSearch() {
   const value = searchInput.value.trim();
-  if (!value) return;
+  if (!value) {
+    state.tableFilter = null;
+    renderResultsTable(state.investmentResults);
+    highlightSelectedRow();
+    if (state.selectedItem) {
+      renderSelectedItemChart();
+    }
+    return;
+  }
+
   if (!state.data.items[value]) {
     alert('No historical data found for that item name.');
     return;
   }
-  openModal(value);
+
+  focusItem(value, { updateSearch: true });
 }
 
-function handleEscape(event) {
-  if (event.key === 'Escape' && !modal.hidden) {
-    closeModal();
+function handleSearchInputChange() {
+  if (searchInput.value.trim()) {
+    return;
+  }
+  state.tableFilter = null;
+  renderResultsTable(state.investmentResults);
+  highlightSelectedRow();
+  if (state.selectedItem) {
+    renderSelectedItemChart();
   }
 }
 
@@ -418,6 +363,7 @@ async function init() {
     populateItemSearch();
     state.investmentResults = computeInvestmentResults(state.currentWindow.buyDay, state.currentWindow.sellDay);
     renderResultsTable(state.investmentResults);
+    highlightSelectedRow();
   } catch (error) {
     console.error(error);
     resultsTableBody.innerHTML = '';
@@ -430,21 +376,62 @@ async function init() {
   }
 }
 
-modal.addEventListener('click', (event) => {
-  if (event.target === modal) {
-    closeModal();
+function highlightSelectedRow() {
+  const rows = Array.from(resultsTableBody.querySelectorAll('tr'));
+  for (const row of rows) {
+    const isSelected = row.dataset.itemName === state.selectedItem;
+    row.classList.toggle('is-active', isSelected);
   }
-});
+}
 
-modalCloseBtn.addEventListener('click', closeModal);
+function clearChart() {
+  if (state.chart) {
+    state.chart.destroy();
+    state.chart = null;
+  }
+  chartTitle.textContent = 'Select an item to view price history';
+  chartSubtitle.textContent = 'Choose an item from the table or search to plot its price across leagues.';
+  chartContainer.setAttribute('data-empty', 'true');
+  chartEmpty.hidden = false;
+}
+
+function renderSelectedItemChart() {
+  const itemName = state.selectedItem;
+  if (!itemName || !state.data?.items[itemName]) {
+    clearChart();
+    return;
+  }
+
+  const itemData = state.data.items[itemName];
+  chartTitle.textContent = itemName;
+  chartSubtitle.textContent = 'Chaos Orb price across leagues';
+  chartContainer.setAttribute('data-empty', 'false');
+  chartEmpty.hidden = true;
+  renderPriceChart(itemName, itemData);
+}
+
+function focusItem(itemName, { updateSearch } = {}) {
+  if (!state.data?.items[itemName]) {
+    return;
+  }
+  state.selectedItem = itemName;
+  state.tableFilter = itemName;
+  if (updateSearch) {
+    searchInput.value = itemName;
+  }
+  renderResultsTable(state.investmentResults);
+  renderSelectedItemChart();
+  highlightSelectedRow();
+}
+
 document.getElementById('screener-form').addEventListener('submit', handleFormSubmit);
 searchButton.addEventListener('click', handleSearch);
+searchInput.addEventListener('input', handleSearchInputChange);
 searchInput.addEventListener('keydown', (event) => {
   if (event.key === 'Enter') {
     event.preventDefault();
     handleSearch();
   }
 });
-document.addEventListener('keydown', handleEscape);
 
 document.addEventListener('DOMContentLoaded', init);
