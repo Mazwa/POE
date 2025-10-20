@@ -222,20 +222,8 @@ td {
   font-variant-numeric: tabular-nums;
 }
 
-.chart-container {
-  height: 200px;
-  position: relative;
-}
-
 #price-chart {
-  width: 100% !important;
-  height: 100% !important;
-}
-
-@media (max-width: 720px) {
-  .chart-container {
-    height: 160px;
-  }
+  height: 60px;
 }
 
 .table-footnote {
