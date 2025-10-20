@@ -1,0 +1,438 @@
+const LEAGUE_FILES = [
+  { label: 'Necropolis', path: 'Necropolis.currency.csv' },
+  { label: 'Settlers', path: 'Settlers.currency.csv' },
+  { label: 'Phrecia', path: 'Phrecia.currency.csv' }
+];
+
+const HOLD_DURATIONS = [1, 2, 4, 8, 16, 32, 64];
+const THREE_MONTHS_IN_DAYS = 92;
+
+const state = {
+  data: null,
+  investmentResults: [],
+  currentWindow: { buyDay: 3, sellDay: 6 },
+  chart: null
+};
+
+const resultsTableBody = document.querySelector('#results-table tbody');
+const holdTableHead = document.querySelector('#hold-table thead');
+const holdTableBody = document.querySelector('#hold-table tbody');
+const modal = document.getElementById('modal');
+const modalTitle = document.getElementById('modal-title');
+const modalCloseBtn = document.querySelector('.modal-close');
+const priceCanvas = document.getElementById('price-chart');
+const searchInput = document.getElementById('item-search');
+const searchButton = document.getElementById('item-search-btn');
+const datalist = document.getElementById('item-options');
+
+async function loadData() {
+  const leaguePromises = LEAGUE_FILES.map(async (file) => {
+    const response = await fetch(file.path);
+    if (!response.ok) {
+      throw new Error(`Failed to load ${file.path}`);
+    }
+    const text = await response.text();
+    return parseLeagueCSV(text, file.label);
+  });
+
+  const leagueData = await Promise.all(leaguePromises);
+  return buildDataset(leagueData);
+}
+
+function parseLeagueCSV(text, expectedLeagueName) {
+  const rows = text.trim().split(/\r?\n/);
+  const header = rows.shift();
+  if (!header || !header.includes(';')) {
+    throw new Error(`Unexpected header for ${expectedLeagueName}`);
+  }
+
+  const entries = [];
+  for (const row of rows) {
+    if (!row.trim()) continue;
+    const [league, dateStr, get, pay, valueStr, confidence] = row.split(';');
+    if (league !== expectedLeagueName) continue;
+    if (pay !== 'Chaos Orb') continue;
+    const value = Number.parseFloat(valueStr);
+    if (!Number.isFinite(value)) continue;
+    const date = new Date(dateStr);
+    if (Number.isNaN(date.getTime())) continue;
+    entries.push({ league, date, item: get, value, confidence });
+  }
+  return { league: expectedLeagueName, entries };
+}
+
+function buildDataset(leagueData) {
+  const dataset = {
+    leagues: {},
+    items: {},
+    itemNames: new Set()
+  };
+
+  for (const { league, entries } of leagueData) {
+    if (!entries.length) continue;
+    const startDate = entries.reduce((min, entry) => entry.date < min ? entry.date : min, entries[0].date);
+    const cutoff = new Date(startDate);
+    cutoff.setDate(cutoff.getDate() + THREE_MONTHS_IN_DAYS);
+
+    const items = {};
+    for (const entry of entries) {
+      if (entry.date > cutoff) continue;
+      const day = Math.round((entry.date - startDate) / (1000 * 60 * 60 * 24));
+      if (day < 0) continue;
+      if (!items[entry.item]) {
+        items[entry.item] = [];
+      }
+      items[entry.item].push({ ...entry, day });
+      dataset.itemNames.add(entry.item);
+    }
+
+    for (const itemName of Object.keys(items)) {
+      items[itemName].sort((a, b) => a.day - b.day);
+      const dayIndex = Object.fromEntries(items[itemName].map((entry) => [entry.day, entry.value]));
+      items[itemName] = { entries: items[itemName], dayIndex };
+    }
+
+    dataset.leagues[league] = { startDate, items };
+  }
+
+  // Build inverted index for items
+  for (const [leagueName, leagueInfo] of Object.entries(dataset.leagues)) {
+    for (const [itemName, itemData] of Object.entries(leagueInfo.items)) {
+      if (!dataset.items[itemName]) {
+        dataset.items[itemName] = { leagueData: {} };
+      }
+      dataset.items[itemName].leagueData[leagueName] = itemData;
+    }
+  }
+
+  dataset.itemNames = Array.from(dataset.itemNames).sort((a, b) => a.localeCompare(b));
+  return dataset;
+}
+
+function computeInvestmentResults(buyDay, sellDay) {
+  if (buyDay >= sellDay) {
+    return [];
+  }
+
+  const results = [];
+
+  for (const [itemName, itemInfo] of Object.entries(state.data.items)) {
+    const leagueMetrics = [];
+
+    for (const [leagueName, data] of Object.entries(itemInfo.leagueData)) {
+      const buyPrice = data.dayIndex[buyDay];
+      const sellPrice = data.dayIndex[sellDay];
+      if (!Number.isFinite(buyPrice) || !Number.isFinite(sellPrice) || buyPrice <= 0) {
+        continue;
+      }
+      const compoundReturn = sellPrice / buyPrice - 1;
+      leagueMetrics.push({ leagueName, buyPrice, sellPrice, compoundReturn });
+    }
+
+    if (!leagueMetrics.length) continue;
+
+    const avgBuy = average(leagueMetrics.map((m) => m.buyPrice));
+    const avgSell = average(leagueMetrics.map((m) => m.sellPrice));
+    const avgReturn = average(leagueMetrics.map((m) => m.compoundReturn));
+
+    results.push({
+      itemName,
+      avgBuy,
+      avgSell,
+      avgReturn,
+      leagueMetrics: leagueMetrics.sort((a, b) => b.compoundReturn - a.compoundReturn)
+    });
+  }
+
+  return results.sort((a, b) => b.avgReturn - a.avgReturn);
+}
+
+function average(values) {
+  if (!values.length) return NaN;
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
+function formatChaos(value) {
+  if (!Number.isFinite(value)) return '–';
+  if (value >= 10) return value.toFixed(1);
+  if (value >= 1) return value.toFixed(2);
+  return value.toFixed(3);
+}
+
+function formatPercent(value) {
+  if (!Number.isFinite(value)) return '–';
+  const percentage = value * 100;
+  const formatted = percentage.toFixed(Math.abs(percentage) < 10 ? 2 : 1);
+  return `${percentage >= 0 ? '+' : ''}${formatted}%`;
+}
+
+function renderResultsTable(results) {
+  resultsTableBody.innerHTML = '';
+  if (!results.length) {
+    const row = document.createElement('tr');
+    const cell = document.createElement('td');
+    cell.colSpan = 4;
+    cell.textContent = 'No matching historical opportunities found for this window.';
+    row.appendChild(cell);
+    resultsTableBody.appendChild(row);
+    return;
+  }
+
+  for (const result of results.slice(0, 25)) {
+    const row = document.createElement('tr');
+    row.dataset.itemName = result.itemName;
+    row.innerHTML = `
+      <td>${result.itemName}</td>
+      <td>${formatChaos(result.avgBuy)}</td>
+      <td>${formatChaos(result.avgSell)}</td>
+      <td>${formatPercent(result.avgReturn)}</td>
+    `;
+    row.addEventListener('click', () => openModal(result.itemName));
+    resultsTableBody.appendChild(row);
+
+    const detailRow = document.createElement('tr');
+    detailRow.classList.add('league-details');
+    const detailCell = document.createElement('td');
+    detailCell.colSpan = 4;
+    detailCell.innerHTML = createLeagueMetricsTable(result.leagueMetrics);
+    detailRow.appendChild(detailCell);
+    resultsTableBody.appendChild(detailRow);
+  }
+}
+
+function createLeagueMetricsTable(metrics) {
+  if (!metrics.length) return '';
+  const header = `
+    <thead>
+      <tr>
+        <th>League</th>
+        <th>Buy (c)</th>
+        <th>Sell (c)</th>
+        <th>Return</th>
+      </tr>
+    </thead>`;
+  const rows = metrics
+    .map(
+      (metric) => `
+        <tr>
+          <td>${metric.leagueName}</td>
+          <td>${formatChaos(metric.buyPrice)}</td>
+          <td>${formatChaos(metric.sellPrice)}</td>
+          <td>${formatPercent(metric.compoundReturn)}</td>
+        </tr>`
+    )
+    .join('');
+
+  return `<table class="league-metrics">${header}<tbody>${rows}</tbody></table>`;
+}
+
+function populateItemSearch() {
+  datalist.innerHTML = '';
+  for (const name of state.data.itemNames) {
+    const option = document.createElement('option');
+    option.value = name;
+    datalist.appendChild(option);
+  }
+}
+
+function openModal(itemName) {
+  const itemData = state.data.items[itemName];
+  if (!itemData) return;
+
+  modalTitle.textContent = itemName;
+  renderPriceChart(itemName, itemData);
+  renderHoldTable(itemData);
+
+  modal.hidden = false;
+  modal.focus({ preventScroll: true });
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal() {
+  modal.hidden = true;
+  document.body.style.overflow = '';
+  if (state.chart) {
+    state.chart.destroy();
+    state.chart = null;
+  }
+}
+
+function renderPriceChart(itemName, itemData) {
+  if (state.chart) {
+    state.chart.destroy();
+  }
+
+  const datasets = [];
+  const labelsSet = new Set();
+
+  for (const [leagueName, data] of Object.entries(itemData.leagueData)) {
+    const sortedEntries = data.entries;
+    sortedEntries.forEach((entry) => labelsSet.add(entry.day));
+    datasets.push({
+      label: leagueName,
+      data: sortedEntries.map((entry) => ({ x: entry.day, y: entry.value })),
+      tension: 0.25,
+      fill: false,
+      borderWidth: 2,
+      pointRadius: 2
+    });
+  }
+
+  const labels = Array.from(labelsSet).sort((a, b) => a - b);
+
+  state.chart = new Chart(priceCanvas, {
+    type: 'line',
+    data: {
+      datasets
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: {
+          type: 'linear',
+          title: {
+            display: true,
+            text: 'League Day'
+          },
+          ticks: {
+            precision: 0
+          }
+        },
+        y: {
+          title: {
+            display: true,
+            text: 'Chaos Orb Value'
+          }
+        }
+      },
+      plugins: {
+        tooltip: {
+          callbacks: {
+            label(context) {
+              const { dataset, raw } = context;
+              return `${dataset.label}: Day ${raw.x} → ${formatChaos(raw.y)}c`;
+            }
+          }
+        },
+        legend: {
+          position: 'bottom'
+        }
+      }
+    }
+  });
+}
+
+function renderHoldTable(itemData) {
+  const leagueNames = Object.keys(itemData.leagueData).sort((a, b) => a.localeCompare(b));
+  holdTableHead.innerHTML = '';
+  holdTableBody.innerHTML = '';
+
+  const headerRow = document.createElement('tr');
+  headerRow.innerHTML = `<th>Hold (days)</th><th>Overall Avg Return</th>${leagueNames
+    .map((name) => `<th>${name}</th>`)
+    .join('')}`;
+  holdTableHead.appendChild(headerRow);
+
+  for (const duration of HOLD_DURATIONS) {
+    const leagueAverages = leagueNames.map((leagueName) => {
+      const returns = computeHoldReturns(itemData.leagueData[leagueName], duration);
+      return {
+        leagueName,
+        averageReturn: average(returns),
+        samples: returns
+      };
+    });
+
+    const overallAvg = average(leagueAverages.flatMap((entry) => entry.samples));
+
+    const row = document.createElement('tr');
+    row.innerHTML = [`<td>${duration}</td>`, `<td>${formatPercent(overallAvg)}</td>`]
+      .concat(leagueAverages.map((entry) => `<td>${formatPercent(entry.averageReturn)}</td>`))
+      .join('');
+    holdTableBody.appendChild(row);
+  }
+}
+
+function computeHoldReturns(itemLeagueData, duration) {
+  const returns = [];
+  if (!itemLeagueData) return returns;
+  const { dayIndex } = itemLeagueData;
+  const days = Object.keys(dayIndex)
+    .map((d) => Number.parseInt(d, 10))
+    .sort((a, b) => a - b);
+
+  for (const day of days) {
+    const endDay = day + duration;
+    if (!Number.isFinite(dayIndex[day]) || !Number.isFinite(dayIndex[endDay])) continue;
+    const startPrice = dayIndex[day];
+    const endPrice = dayIndex[endDay];
+    if (startPrice > 0 && endPrice > 0) {
+      returns.push(endPrice / startPrice - 1);
+    }
+  }
+  return returns;
+}
+
+function handleFormSubmit(event) {
+  event.preventDefault();
+  const buyDay = Number.parseInt(event.target['buy-day'].value, 10);
+  const sellDay = Number.parseInt(event.target['sell-day'].value, 10);
+  if (!Number.isFinite(buyDay) || !Number.isFinite(sellDay)) return;
+  state.currentWindow = { buyDay, sellDay };
+  state.investmentResults = computeInvestmentResults(buyDay, sellDay);
+  renderResultsTable(state.investmentResults);
+}
+
+function handleSearch() {
+  const value = searchInput.value.trim();
+  if (!value) return;
+  if (!state.data.items[value]) {
+    alert('No historical data found for that item name.');
+    return;
+  }
+  openModal(value);
+}
+
+function handleEscape(event) {
+  if (event.key === 'Escape' && !modal.hidden) {
+    closeModal();
+  }
+}
+
+async function init() {
+  try {
+    state.data = await loadData();
+    populateItemSearch();
+    state.investmentResults = computeInvestmentResults(state.currentWindow.buyDay, state.currentWindow.sellDay);
+    renderResultsTable(state.investmentResults);
+  } catch (error) {
+    console.error(error);
+    resultsTableBody.innerHTML = '';
+    const row = document.createElement('tr');
+    const cell = document.createElement('td');
+    cell.colSpan = 4;
+    cell.textContent = 'Failed to load data. Please refresh the page.';
+    row.appendChild(cell);
+    resultsTableBody.appendChild(row);
+  }
+}
+
+modal.addEventListener('click', (event) => {
+  if (event.target === modal) {
+    closeModal();
+  }
+});
+
+modalCloseBtn.addEventListener('click', closeModal);
+document.getElementById('screener-form').addEventListener('submit', handleFormSubmit);
+searchButton.addEventListener('click', handleSearch);
+searchInput.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    handleSearch();
+  }
+});
+document.addEventListener('keydown', handleEscape);
+
+document.addEventListener('DOMContentLoaded', init);
