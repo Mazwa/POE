@@ -9,7 +9,7 @@ const LEAGUE_FILES = [
 const HOLD_DURATIONS = [1, 2, 4, 8, 16, 32, 64];
 const THREE_MONTHS_IN_DAYS = 92;
 
-const DEFAULT_SELECTED_LEAGUES = new Set(['Settlers', 'Phrecia']);
+const DEFAULT_SELECTED_LEAGUES = new Set(['Settlers', 'Mercenaries', 'Keepers']);
 const LEAGUE_COLORS = {
   Necropolis: '#38bdf8',
   Settlers: '#f97316',
@@ -47,6 +47,16 @@ const chartEmpty = document.getElementById('chart-empty');
 const leagueFilterContainer = document.getElementById('league-filters');
 const chartEmptyDefaultText = chartEmpty.textContent;
 const confidenceFilterInput = document.getElementById('exclude-low-confidence');
+
+const EXCLUDED_ITEM_SUBSTRINGS = [
+  ' Scouting',        // examples
+  ' Implant'
+];
+
+function shouldExcludeItemName(itemName) {
+  const s = (itemName || '').toLowerCase();
+  return EXCLUDED_ITEM_SUBSTRINGS.some((needle) => s.includes(needle.toLowerCase()));
+}
 
 async function loadData() {
   const loadedLeagues = [];
@@ -87,6 +97,7 @@ function parseLeagueCSV(text, expectedLeagueName) {
     const confidence = confidenceRaw?.trim();
     if (league !== expectedLeagueName) continue;
     if (pay !== 'Chaos Orb') continue;
+    if (shouldExcludeItemName(get)) continue;  
     const value = Number.parseFloat(valueStr);
     if (!Number.isFinite(value)) continue;
     const date = new Date(dateStr);
