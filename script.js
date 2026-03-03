@@ -2,7 +2,8 @@ const LEAGUE_FILES = [
   { label: 'Necropolis', path: 'Necropolis.currency.csv' },
   { label: 'Settlers', path: 'Settlers.currency.csv' },
   { label: 'Phrecia', path: 'Phrecia.currency.csv' },
-  { label: 'Mercenaries', path: 'Mercenaries.currency.csv' }
+  { label: 'Mercenaries', path: 'Mercenaries.currency.csv' },
+  { label: 'Keepers', path: 'Keepers.currency.csv' }
 ];
 
 const HOLD_DURATIONS = [1, 2, 4, 8, 16, 32, 64];
@@ -13,7 +14,8 @@ const LEAGUE_COLORS = {
   Necropolis: '#38bdf8',
   Settlers: '#f97316',
   Phrecia: '#a855f7',
-  Mercenaries: '#facc15'
+  Mercenaries: '#facc15',
+  Keepers: '#22c55e'
 };
 
 const state = {
