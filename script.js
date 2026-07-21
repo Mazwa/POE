@@ -3,19 +3,21 @@ const LEAGUE_FILES = [
   { label: 'Settlers', path: 'Settlers.currency.csv' },
   { label: 'Phrecia', path: 'Phrecia.currency.csv' },
   { label: 'Mercenaries', path: 'Mercenaries.currency.csv' },
-  { label: 'Keepers', path: 'Keepers.currency.csv' }
+  { label: 'Keepers', path: 'Keepers.currency.csv' },
+  { label: 'Mirage', path: 'Mirage.currency.csv' }
 ];
 
 const HOLD_DURATIONS = [1, 2, 4, 8, 16, 32, 64];
 const THREE_MONTHS_IN_DAYS = 92;
 
-const DEFAULT_SELECTED_LEAGUES = new Set(['Settlers', 'Mercenaries', 'Keepers']);
+const DEFAULT_SELECTED_LEAGUES = new Set(['Settlers', 'Mercenaries', 'Keepers', 'Mirage']);
 const LEAGUE_COLORS = {
   Necropolis: '#38bdf8',
   Settlers: '#f97316',
   Phrecia: '#a855f7',
   Mercenaries: '#facc15',
-  Keepers: '#22c55e'
+  Keepers: '#22c55e',
+  Mirage: '#ec4899'
 };
 
 const state = {
